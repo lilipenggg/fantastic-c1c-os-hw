@@ -1,16 +1,16 @@
 #include <studio.h>
 #include "stack.h"
 
-stackT *NewStack(void)
+struct stackT *NewStack(void)
 {
-	struct stackT *newStackPtr = new stackT;
+	stackT *newStackPtr = mallof(sizeof(stackT))
 	newStackPtr->head = NULL;
 	return newStackPtr;
 }
 
 void Push(stackT *stack, valueT value)
 {
-	struct nodeT *newNode = new nodeT;
+    nodeT *newNode = malloc(sizeof(nodeT));
 	newNode->value = value;
 	if (stack->head == NULL)
 	{
@@ -33,7 +33,7 @@ valueT Pop(stackT *stack)
 	}
 	else
 	{
-		tempNode = stack->head;
+		nodeT *tempNode = stack->head;
 		stack->head = head->next;
 		delete tempNode;
 	}
@@ -48,10 +48,10 @@ void EmptyStack(stackT *stack)
 	}
 	else
 	{
-		struct nodeT *currNode = stack->head;
+		nodeT *currNode = stack->head;
 		while (currNode->next != NULL)
 		{
-			struct nodeT *tempNode = currNode;
+			nodeT *tempNode = currNode;
 			currNode = currNode->next;
 			delete tempNode;
 		}
@@ -76,5 +76,11 @@ void FreeStack(stackT *stack)
 
 bool IsEmpty(stackT *stack)
 {
-	return (stack->head != NULL);
+    enum bool flag = true;
+    if(stack->head != NULL)
+    {
+        flag = false;
+        return flag;
+    }
+    return flag;
 }
