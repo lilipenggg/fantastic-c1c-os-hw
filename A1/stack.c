@@ -70,7 +70,6 @@ void FreeStack(stackT *stack)
     }
     else
     {
-        stack->head = NULL;
         free(stack);
     }
 }
