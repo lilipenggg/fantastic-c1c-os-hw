@@ -1,0 +1,34 @@
+Lili Peng
+
+1. The purposes of the system calls are:
+	- provides user the basic functionality to operate the operating system
+	- provides the functionalities of loading, executing, and creating processes and terminating when the user's task is finished in the process
+	- provide the functionalities of creating, deleting, opening, closing, and saving a file
+	- provides functionalities of reading and writing a device
+	- provides functionalities of creating and deleting communications, sending or receiving messages
+
+2. Data structures associated with system calls:
+	- functions
+
+3. Files related to system calls in xv6:
+	- sysproc.c
+	- syscall.h
+	- defs.h
+	- user.h
+	- syscall.c
+	- usys.S
+	- sysfunc.h
+	
+4. The way I will go with create a system call in xv6:
+	1. add a line of code to reserve a system call number for my system call in syscall.h file
+	
+	2. open up the "syscall.c" file, and add a index for a pointer to my system call 
+	at the end of the function pointer array in the "static int (*syscalls[])(void)" function
+	
+	3. then I will put the function prototype in the "syscall.c" file
+	
+	4. then I will implement this system call function in "sysproc.c" file
+	
+	5. open up the "usys.S" file and add SYSCALL(functionname) this line of code at the end
+	
+	6. open up "user.h" and add the system call function prototype at the end
