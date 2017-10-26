@@ -1,6 +1,6 @@
 //
 //  forkExecTest.c
-//  
+//
 //
 //  Created by Lili Peng on 10/24/17.
 //
@@ -40,15 +40,16 @@ main (int argc, char *argv[])
                 exit();
             }
             pid = fork();
-            seq = 0;
+            
             if(pid == 0)
             {
                 close(fds[0]);
                 
                 int i;
-                for (i = 0; i < n; i++)
+                for (i = 1; i <= n; i++)
                 {
                     printf(stdout, "lowPriority: %d\n", i);
+                    sleep(20);
                 }
                 exit();
             }
@@ -57,9 +58,10 @@ main (int argc, char *argv[])
                 close(fds[1]);
                 
                 int j;
-                for (j = 0; j < n; j++)
+                for (j = 1; j <= n; j++)
                 {
                     printf(stdout, "highPriority: %d\n", j);
+                    sleep(20);
                 }
                 close(fds[0]);
                 wait();
@@ -71,5 +73,12 @@ main (int argc, char *argv[])
             }
             
         }
+        else
+        {
+            printf(stdout, "error: input should be a positive integer\n");
+            exit();
+        }
     }
+    exit();
 }
+
