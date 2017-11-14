@@ -7,87 +7,6 @@
 #include "proc.h"
 #include "spinlock.h"
 
- //HW5-2: Create a struct for the queue collection
-struct queuel{
-    struct spinlock lock;
-    struct procq *q[5];
-};
-
-static struct queuel *queuel;
-
-int enqueue(int pid, int prio)
-{
-    // Allocate memory for a new node
-    struct node *newNode = (struct node*)kalloc();
-    newNode->pid = pid;
-    newNode->next = 0;
-    
-    // When the priority queue is empty
-    if (queuel->q[prio]->head == 0)
-    {
-        queuel->q[prio]->head = newNode;
-    }
-    // When this priority queue is not empty
-    else
-    {
-        struct node *temp = queuel->q[prio]->head;
-        while (temp->next != 0)
-        {
-            temp = temp->next;
-        }
-        temp->next = newNode;
-    }
-    
-    return 0;
-}
-
-int dequeue(int pid, int prio)
-{
-    // When the priority queue is empty
-    if (queuel->q[prio] == 0)
-    {
-        cprintf("Error: There is nothing to be dequeued");
-        return -1;
-    }
-    else
-    {
-        // When this process is in the first spot in the priority queue
-        if (queuel->q[prio]->head->pid == pid)
-        {
-            struct node *temp = queuel->q[prio]->head;
-            queuel->q[prio]->head = queuel->q[prio]->head->next;
-            kfree((void*)temp);
-        }
-        // When this process is not in the first spot in the prioriy queue
-        else
-        {
-            int found = 0;
-            struct node *temp2 = queuel->q[prio]->head;
-            while (temp2->next != 0)
-            {
-                if (temp2->pid == pid)
-                {
-                    struct node *temp3 = temp2;
-                    temp2 = temp2->next;
-                    kfree((void*)temp3);
-                    found = -1;
-                    break;
-                }
-                temp2 = temp2->next;
-            }
-            if (!found)
-            {
-                return -1;
-            }
-        }
-    }
-    return 0;
-}
-
-//struct {
-//  struct spinlock lock;
-//  proc_queue *q[5];
-//} queuel;
 
 struct {
   struct spinlock lock;
@@ -107,15 +26,6 @@ pinit(void)
 {
   initlock(&ptable.lock, "ptable");
   
-  // HW5-2: Initialize the queue collection
-  initlock(&queuel->lock, "queuel");
-  acquire(&queuel->lock);
-  int i;
-  for (i = 0; i < 5; i++)
-  {
-    queuel->q[i]->head = 0;
-  }
-  release(&queuel->lock);
 }
 
 //PAGEBREAK: 32
@@ -161,6 +71,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  p->priority = 0;
 
   return p;
 }
@@ -192,13 +103,6 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
-
-  // HW5-2: Initialize the priority for the process 
-  //and put the process in the queue collection
-  p->priority = 0;
-  acquire(&queuel->lock);
-  enqueue(p->pid, 0);
-  release(&queuel->lock);
 }
 
 // Grow current process's memory by n bytes.
@@ -256,11 +160,7 @@ fork(void)
   pid = np->pid;
   np->state = RUNNABLE;
 
-  // HW5-2: Makes the child process inherit the parent's priority
   np->priority = proc->priority;
-  acquire(&queuel->lock);
-  enqueue(np->pid, np->priority);
-  release(&queuel->lock);
 
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   return pid;
@@ -364,6 +264,7 @@ void
 scheduler(void)
 {
   struct proc *p;
+  int highest = 4;
 
   for(;;){
     // Enable interrupts on this processor.
@@ -371,33 +272,22 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+      
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+          if (p->priority < highest)
+          {
+              highest = p->priority;
+          }
+      }
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
-        continue;
-      
-    // HW5-2: Check to see if this process has the highest priority
-    acquire(&queuel->lock);
-    int highest = 1;
-      
-    int i;
-    for (i = 0; i < p->priority; i++)
-    {
-        if (queuel->q[i]->head != 0)
-        {
-            if (i < p->priority || queuel->q[i]->head->pid != p->pid)
-            {
-                highest = 0;
-                break;
-            }
-        }
-    }
-      
-      if (highest == 0)
       {
-         release(&queuel->lock);
-         continue; 
+          if (p->priority > hightest)
+              continue;
       }
+      
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -406,25 +296,12 @@ scheduler(void)
       switchuvm(p);
       p->state = RUNNING;
 
-      // HW5-2: Remove the running process from the queue
-      dequeue(p->pid, p->priority);
-      release(&queuel->lock);
-
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       
-      // HW5-2: If the process is done running for now, 
-      // put the process back to the queue for next time running
-      if (p->state == RUNNABLE)
-      {
-         acquire(&queuel->lock);
-         dequeue(p->pid, p->priority);
-         enqueue(p->pid, p->priority);
-         release(&queuel->lock);
-      }
       proc = 0;
     }
     release(&ptable.lock);
@@ -458,13 +335,6 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   proc->state = RUNNABLE;
-
-  // HW5-2: When the current process yields the CPU, 
-  //put the current process to the back of the queue
-  acquire(&queuel->lock);
-  dequeue(proc->pid, proc->priority);
-  enqueue(proc->pid, proc->priority);
-  release(&queuel->lock); 
 
   sched();
   release(&ptable.lock);
@@ -539,11 +409,6 @@ wakeup1(void *chan)
     if(p->state == SLEEPING && p->chan == chan)
     {
       p->state = RUNNABLE;
-       
-      // HW5-2: Put the runnable process into the queue collection
-      acquire(&queuel->lock);
-      enqueue(p->pid, p->priority);
-      release(&queuel->lock);
     }
 }
 
