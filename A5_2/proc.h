@@ -69,17 +69,18 @@ struct proc {
   int priority;                // Priority of the process
 };
 
-typedef struct _node {
+struct node {
     int pid;
-    struct _node *next;
-} node;
+    struct node *next;
+};
 
-typedef struct {
-    node *head;
-} procq;
+struct procq{
+    struct node *head;
+};
 
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+

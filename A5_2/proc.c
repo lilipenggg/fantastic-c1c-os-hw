@@ -8,27 +8,29 @@
 #include "spinlock.h"
 
  //HW5-2: Create a struct for the queue collection
-struct {
+struct queuel{
     struct spinlock lock;
-    procq *q[5];
-} queuel;
+    struct procq *q[5];
+};
+
+static struct queuel *queuel;
 
 int enqueue(int pid, int prio)
 {
     // Allocate memory for a new node
-    struct node *newNode = (node*)kalloc();
+    struct node *newNode = (struct node*)kalloc();
     newNode->pid = pid;
     newNode->next = 0;
     
     // When the priority queue is empty
-    if (queuel.q[prio]->head == 0)
+    if (queuel->q[prio]->head == 0)
     {
-        queuel.q[prio]->head = newNode;
+        queuel->q[prio]->head = newNode;
     }
     // When this priority queue is not empty
     else
     {
-        struct node *temp = queuel.q[prio]->head;
+        struct node *temp = queuel->q[prio]->head;
         while (temp->next != 0)
         {
             temp = temp->next;
@@ -42,7 +44,7 @@ int enqueue(int pid, int prio)
 int dequeue(int pid, int prio)
 {
     // When the priority queue is empty
-    if (queuel.q[prio] == 0)
+    if (queuel->q[prio] == 0)
     {
         cprintf("Error: There is nothing to be dequeued");
         return -1;
@@ -50,32 +52,36 @@ int dequeue(int pid, int prio)
     else
     {
         // When this process is in the first spot in the priority queue
-        if (queuel.q[prio]->pid == pid)
+        if (queuel->q[prio]->head->pid == pid)
         {
-            node *temp = queue.q[prio]->head;
-            queue.q[prio]->head = queue.q[prio]->head->next;
+            struct node *temp = queuel->q[prio]->head;
+            queuel->q[prio]->head = queuel->q[prio]->head->next;
             kfree((void*)temp);
         }
         // When this process is not in the first spot in the prioriy queue
         else
         {
             int found = 0;
-            node *temp2 = queue.q[prio]->head;
+            struct node *temp2 = queuel->q[prio]->head;
             while (temp2->next != 0)
             {
                 if (temp2->pid == pid)
                 {
-                    node *temp3 = temp2;
+                    struct node *temp3 = temp2;
                     temp2 = temp2->next;
-                    kalloc((void*)temp3);
+                    kfree((void*)temp3);
                     found = -1;
                     break;
                 }
                 temp2 = temp2->next;
             }
-            return found;
+            if (!found)
+            {
+                return -1;
+            }
         }
     }
+    return 0;
 }
 
 //struct {
@@ -102,14 +108,14 @@ pinit(void)
   initlock(&ptable.lock, "ptable");
   
   // HW5-2: Initialize the queue collection
-  initlock(&queuel.lock, "queuel");
-  acquire(&queuel.lock);
+  initlock(&queuel->lock, "queuel");
+  acquire(&queuel->lock);
   int i;
   for (i = 0; i < 5; i++)
   {
-    queuel.q[i]->head = 0;
+    queuel->q[i]->head = 0;
   }
-  release(&queuel.lock);
+  release(&queuel->lock);
 }
 
 //PAGEBREAK: 32
@@ -190,9 +196,9 @@ userinit(void)
   // HW5-2: Initialize the priority for the process 
   //and put the process in the queue collection
   p->priority = 0;
-  acquire(&queuel.lock);
+  acquire(&queuel->lock);
   enqueue(p->pid, 0);
-  release(&queuel.lock);
+  release(&queuel->lock);
 }
 
 // Grow current process's memory by n bytes.
@@ -252,9 +258,9 @@ fork(void)
 
   // HW5-2: Makes the child process inherit the parent's priority
   np->priority = proc->priority;
-  acquire(&queuel.lock);
+  acquire(&queuel->lock);
   enqueue(np->pid, np->priority);
-  release(&queuel.lock);
+  release(&queuel->lock);
 
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   return pid;
@@ -365,32 +371,31 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
       
     // HW5-2: Check to see if this process has the highest priority
-    acquire(&queuel.lock);
+    acquire(&queuel->lock);
     int highest = 1;
       
     int i;
     for (i = 0; i < p->priority; i++)
     {
-        if (queuel.q[i]->head != 0)
+        if (queuel->q[i]->head != 0)
         {
-            if (i < p->priority || queuel.q[i]->head->pid != p->pid)
+            if (i < p->priority || queuel->q[i]->head->pid != p->pid)
             {
                 highest = 0;
                 break;
             }
         }
     }
-
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
       
-      
-      if (!highest)
+      if (highest == 0)
       {
-         release(&queuel.lock);
+         release(&queuel->lock);
          continue; 
       }
 
@@ -403,7 +408,7 @@ scheduler(void)
 
       // HW5-2: Remove the running process from the queue
       dequeue(p->pid, p->priority);
-      release(&queuel.lock);
+      release(&queuel->lock);
 
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
@@ -415,10 +420,10 @@ scheduler(void)
       // put the process back to the queue for next time running
       if (p->state == RUNNABLE)
       {
-         acquire(&queuel.lock);
+         acquire(&queuel->lock);
          dequeue(p->pid, p->priority);
          enqueue(p->pid, p->priority);
-         release(&queuel.lock);
+         release(&queuel->lock);
       }
       proc = 0;
     }
@@ -456,10 +461,10 @@ yield(void)
 
   // HW5-2: When the current process yields the CPU, 
   //put the current process to the back of the queue
-  acquire(&queuel.lock);
+  acquire(&queuel->lock);
   dequeue(proc->pid, proc->priority);
   enqueue(proc->pid, proc->priority);
-  release(&queuel.lock); 
+  release(&queuel->lock); 
 
   sched();
   release(&ptable.lock);
@@ -536,9 +541,9 @@ wakeup1(void *chan)
       p->state = RUNNABLE;
        
       // HW5-2: Put the runnable process into the queue collection
-      acquire(&queuel.lock);
+      acquire(&queuel->lock);
       enqueue(p->pid, p->priority);
-      release(&queuel.lock);
+      release(&queuel->lock);
     }
 }
 
@@ -610,4 +615,5 @@ procdump(void)
     cprintf("\n");
   }
 }
+
 
