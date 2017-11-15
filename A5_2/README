@@ -1,50 +1,42 @@
-xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
-Version 6 (v6).  xv6 loosely follows the structure and style of v6,
-but is implemented for a modern x86-based multiprocessor using ANSI C.
+# CS3100- Operating-Systems Priority Scheduler Part II
+In this assignment, we modified the round robin scheduler in xv6 to a priority based scheduler.
 
-ACKNOWLEDGMENTS
+Lili Peng
 
-xv6 is inspired by John Lions's Commentary on UNIX 6th Edition (Peer
-to Peer Communications; ISBN: 1-57398-013-7; 1st edition (June 14,
-2000)). See also http://pdos.csail.mit.edu/6.828/2012/v6.html, which
-provides pointers to on-line resources for v6.
+Files that are changed for the implementation of priority based scheduler:
+	
+	
+	syscall.c
+	-	Define required syscall functions:
+		o	sys_nice(void)
+		o	sys_getpriority(void)
+		o	sys_setpriority(void)
+	-	put the new syscalls in the syscall array
+	
+	syscall.h
+	-	Set the syscall numbers:
+		o	#define SYS_nice   22
+		o	#define SYS_getpriority 23
+		o	#define SYS_setpriority 24
+	
+	sysproc.c
+	-	Implement system calls for nice, getpriority, and setpriority 
+		o	int sys_nice(void)
+		o	int sys_getpriority(void)
+		o	int sys_setpriority(void)
+	
+	user.h 
+	-	Define syscall functions
+		o	int nice (int incr);
+		o	int getpriority(int pid);
+		o	int setpriority(int pid, int new_priority);
+	
+	proc.h
+	-	Add a priority attribute for the proc struct
 
-xv6 borrows code from the following sources:
-    JOS (asm.h, elf.h, mmu.h, bootasm.S, ide.c, console.c, and others)
-    Plan 9 (entryother.S, mp.h, mp.c, lapic.c)
-    FreeBSD (ioapic.c)
-    NetBSD (console.c)
-
-The following people have made contributions:
-    Russ Cox (context switching, locking)
-    Cliff Frey (MP)
-    Xiao Yu (MP)
-    Nickolai Zeldovich
-    Austin Clements
-
-In addition, we are grateful for the patches contributed by Greg
-Price, Yandong Mao, and Hitoshi Mitake.
-
-The code in the files that constitute xv6 is
-Copyright 2006-2012 Frans Kaashoek, Robert Morris, and Russ Cox.
-
-ERROR REPORTS
-
-If you spot errors or have suggestions for improvement, please send
-email to Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu). 
-
-BUILDING AND RUNNING XV6
-
-To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run "make".
-On non-x86 or non-ELF machines (like OS X, even on x86), you will
-need to install a cross-compiler gcc suite capable of producing x86 ELF
-binaries.  See http://pdos.csail.mit.edu/6.828/2012/tools.html.
-Then run "make TOOLPREFIX=i386-jos-elf-".
-
-To run xv6, you can use the Bochs or QEMU PC simulators. Bochs makes
-debugging easier, but QEMU is much faster. To run in Bochs, run "make
-bochs" and then type "c" at the bochs prompt. To run in QEMU, run
-"make qemu".
-
-To create a typeset version of the code, run "make xv6.pdf".  This
-requires the "mpage" utility.  See http://www.mesa.nl/pub/mpage/.
+	proc.c
+	-	Implements the priority based scheduler
+		o	Initialize a process's priority in allocproc(void) method
+		o	Implement logic for the priority based scheduler in the scheduler(void) method
+		o	Make the child process inherits the parent's priority in fork(void) method
+			
