@@ -1,6 +1,6 @@
 //
 //  HW6.c
-//  
+//
 //
 //  Created by Lili Peng on 12/3/17.
 //
@@ -16,11 +16,11 @@ int threshold;
 pthread_mutex_t lock;
 
 void *mythread(void *arg) {
-    printf("%s: begin\n", (char*)arg);
+
     int i;
     int localCounter = 0;
     
-    for (i = 0; i < 10000000; i++)
+    for (i = 0; i < 1000000; i++)
     {
         localCounter++;
         if (localCounter == threshold) {
@@ -44,10 +44,10 @@ main (int argc, char *argv[])
     threshold = atoi(argv[1]);
     pthread_t p1,p2,p3,p4,p5;
     int pres = pthread_mutex_init(&lock, NULL);
-    printf("pres = %d\n", pres);
+    
     int rc;
     
-    printf("main: begin\n");
+    printf("threshold: %d\n", threshold);
     
     // Start recording time
     clock_t t;
@@ -65,12 +65,11 @@ main (int argc, char *argv[])
     rc = pthread_join(p4, NULL);
     rc = pthread_join(p5, NULL);
     
-    printf("counter = %d\n", counter);
-    
     // Calculate the time it takes for counting this threshold
     t = clock() - t;
     double time_taken = ((double)t) / CLOCKS_PER_SEC;
-    printf("main: end\n");
-    printf("processed time: %f seconds\n", time_taken);
+    
+    printf("processed time: %f seconds\n\n", time_taken);
     return 0;
 }
+
